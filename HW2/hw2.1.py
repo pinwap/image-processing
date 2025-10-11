@@ -53,12 +53,18 @@ def local_gamma_correction(img, global_mean, grid_size, gamma, thr_ratio):
 
 cv2.imshow('Original Image', img)
 cv2.imshow('Global Histogram Equalization', global_eq)
+# save image
+cv2.imwrite('D:/Pin/STUDY/0CU/Programming/image processing/HW2/global_eq.jpg', global_eq)
  
 
 # การเลือก k0แปรผันตรงกับค่าเฉลี่ยความสว่าง k2มากลายน้อย 
 cv2.imshow('Local Histogram Equalization 3*3', local_hist_eq(img, 3, 0.4, 1.0, 0.3, global_mean, global_sd))
 cv2.imshow('Local Histogram Equalization 7*7', local_hist_eq(img, 7, 0.7, 1.5, 0.4, global_mean, global_sd))
 cv2.imshow('Local Histogram Equalization 11*11', local_hist_eq(img, 11, 0.1, 1.5, 0.4, global_mean, global_sd))
+# save image
+cv2.imwrite('D:/Pin/STUDY/0CU/Programming/image processing/HW2/local_hist_eq_11.jpg', local_hist_eq(img, 11, 0.1, 1.5, 0.4, global_mean, global_sd))
+cv2.imwrite('D:/Pin/STUDY/0CU/Programming/image processing/HW2/local_hist_eq_7.jpg', local_hist_eq(img, 7, 0.7, 1.5, 0.4, global_mean, global_sd))
+cv2.imwrite('D:/Pin/STUDY/0CU/Programming/image processing/HW2/local_hist_eq_3.jpg', local_hist_eq(img, 3, 0.4, 1.0, 0.3, global_mean, global_sd))
 # cv2.imshow('Local Histogram Equalization 2', local_hist_eq(img, 11, 0.1, 0.5, 0.4, global_mean, global_sd))
 # cv2.imshow('Local Histogram Equalization 3', local_hist_eq(img, 11, 0.1, 1, 0.4, global_mean, global_sd))
 # cv2.imshow('Local Histogram Equalization 4', local_hist_eq(img, 11, 0.1, 1.5, 0.4, global_mean, global_sd))
@@ -66,8 +72,12 @@ cv2.imshow('Local Histogram Equalization 11*11', local_hist_eq(img, 11, 0.1, 1.5
 
 # การเลือก thr_ratio แปรผันตรงกับค่าเฉลี่ยความสว่าง 
 cv2.imshow('Local Gamma correction 5*5', local_gamma_correction(img, global_mean, 5, 0.85, 0.8)) # 0.85
-cv2.imshow('Local Gamma correction 9*9', local_gamma_correction(img, global_mean, 9, 0.7, 1.9))
+cv2.imshow('Local Gamma correction 9*9', local_gamma_correction(img, global_mean, 9, 0.85, 0.5))
 cv2.imshow('Local Gamma correction 15*15', local_gamma_correction(img, global_mean, 15, 0.7, 0.5))
+# save image
+cv2.imwrite('D:/Pin/STUDY/0CU/Programming/image processing/HW2/local_gamma_5.jpg', local_gamma_correction(img, global_mean, 5, 0.85, 0.8))
+cv2.imwrite('D:/Pin/STUDY/0CU/Programming/image processing/HW2/local_gamma_9.jpg', local_gamma_correction(img, global_mean, 9, 0.85, 0.5))
+cv2.imwrite('D:/Pin/STUDY/0CU/Programming/image processing/HW2/local_gamma_15.jpg', local_gamma_correction(img, global_mean, 15, 0.7, 0.5))
 # cv2.imshow('Local Gamma correction 9*9 2', local_gamma_correction(img, global_mean, 9, 0.7, 0.8))
 
 cv2.waitKey(0)
