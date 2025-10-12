@@ -56,30 +56,30 @@ fish = cv2.imread("fish.jpg", 0)
 cabin = cv2.imread("cabin.jpg", 0)
 
 # notch filter
-# for img, name in [(fish,"Fish"), (cabin,"Cabin")]:
-#     results = []
-#     titles = []
-#     for r in [10,50,100]:
-#         H_low = make_ideal_filter(img.shape, r, "low")
-#         H_high = make_ideal_filter(img.shape, r, "high")
-#         results.append(apply_filter(img, H_low))
-#         results.append(apply_filter(img, H_high))
-#         titles.append(f"Ideal LPF r={r}")
-#         titles.append(f"Ideal HPF r={r}")
-#     show_results(img, results, titles)
+for img, name in [(fish,"Fish"), (cabin,"Cabin")]:
+    results = []
+    titles = []
+    for r in [10,50,100]:
+        H_low = make_ideal_filter(img.shape, r, "low")
+        H_high = make_ideal_filter(img.shape, r, "high")
+        results.append(apply_filter(img, H_low))
+        results.append(apply_filter(img, H_high))
+        titles.append(f"Ideal LPF r={r}")
+        titles.append(f"Ideal HPF r={r}")
+    show_results(img, results, titles)
 
-# # gaussian filter
-# for img, name in [(fish,"Fish"), (cabin,"Cabin")]:
-#     results = []
-#     titles = []
-#     for D0 in [10,50,100]:
-#         H_low = make_gaussian_filter(img.shape, D0, "low")
-#         H_high = make_gaussian_filter(img.shape, D0, "high")
-#         results.append(apply_filter(img, H_low))
-#         results.append(apply_filter(img, H_high))
-#         titles.append(f"Gaussian LPF D0={D0}")
-#         titles.append(f"Gaussian HPF D0={D0}")
-#     show_results(img, results, titles)
+# gaussian filter
+for img, name in [(fish,"Fish"), (cabin,"Cabin")]:
+    results = []
+    titles = []
+    for D0 in [10,50,100]:
+        H_low = make_gaussian_filter(img.shape, D0, "low")
+        H_high = make_gaussian_filter(img.shape, D0, "high")
+        results.append(apply_filter(img, H_low))
+        results.append(apply_filter(img, H_high))
+        titles.append(f"Gaussian LPF D0={D0}")
+        titles.append(f"Gaussian HPF D0={D0}")
+    show_results(img, results, titles)
 
 
 # 3.Remove periodic noise 
@@ -139,7 +139,7 @@ mask_diag = axis_mask(hori.shape, 'hori', points=[180,244], band=2)*axis_mask(ho
 
 # Diagonal noise
 diag_restored = apply_notch(diag, mask_diag)
-diag_restored_spectrum = show_spectrum(diag_restored, "Restored Diagonal Spectrum")
+# diag_restored_spectrum = show_spectrum(diag_restored, "Restored Diagonal Spectrum")
 
 # 🔹 Horizontal noise → แกนแนวนอน
 hori_restored = apply_notch(hori, mask_hori)
