@@ -1,35 +1,41 @@
 import cv2, numpy as np, matplotlib.pyplot as plt
+from scipy.signal import find_peaks
 
 # Read the input image in grayscale
-img = cv2.imread('testdata1.jpg', cv2.IMREAD_GRAYSCALE)
-img2 = cv2.imread('testdata2.jpg', cv2.IMREAD_GRAYSCALE)
-img3 = cv2.imread('testdata3.jpg', cv2.IMREAD_GRAYSCALE)
-img4 = cv2.imread('testdata4.jpg', cv2.IMREAD_GRAYSCALE)
-# cv2.namedWindow('Original Image', cv2.WINDOW_NORMAL)
-# cv2.resizeWindow('Original Image', img.shape[1]//2, img.shape[0]//2)
-# cv2.imshow('Original Image', img )
+img = cv2.imread('data/testdata1.jpg', cv2.IMREAD_GRAYSCALE)
+img2 = cv2.imread('data/testdata2.jpg', cv2.IMREAD_GRAYSCALE)
+img3 = cv2.imread('data/testdata3.jpg', cv2.IMREAD_GRAYSCALE)
+img4 = cv2.imread('data/testdata4.jpg', cv2.IMREAD_GRAYSCALE)
 
+img = img4
 
-# crop the image to focus on the chest area
-# according to https://www.kaggle.com/code/davidbroberts/cropping-chest-x-rays
+def show_image(image, title='Image'):
+    cv2.namedWindow(title, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(title, image.shape[1]//2, image.shape[0]//2)
+    cv2.imshow(title, image)
+    cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
-## Make a binarized copy of the image
-thresh = 50
-img_bin = cv2.threshold(img, thresh, 255, cv2.THRESH_BINARY)[1]
+# apply CLAHE to enhance the contrast of the image
+clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+enh = clahe.apply(img)
 
-# plt.figure(figsize=(15,5))
-# plt.imshow(img_bin,cmap="gray")
-# plt.axis('off')
-# plt.show()
+# 1. crop the image to focus on the chest area
 
-## find the row that darker than threshold and crop it out
+## 1.1 OTSU threshold
+
+inv = enh
+_, img_bin = cv2.threshold(inv, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+print("OTSU threshold value: ", _)
+# show_image(img_bin, 'Initial Lung Binary Mask')
+
+## draw top and bottom crop lines
 intensity_threshold = 50
 down = img_bin.shape[0]//2
 up = img_bin.shape[0]//2
 line_thickness = 5
 
 for i in range(img_bin.shape[0]//2,img_bin.shape[0],+5):
-    # median = np.median(img_bin[i])
     row_mean = img_bin[i].mean()
     if row_mean < intensity_threshold:
         down = i
@@ -39,37 +45,34 @@ for i in range(img_bin.shape[0]//2,img_bin.shape[0],+5):
         break
 
 for i in range(img_bin.shape[0]//2,0,-5):
-    # median = np.median(img_bin[i])
     row_mean = img_bin[i].mean()
     if row_mean < intensity_threshold:
         up = i
-        print("Found row to crop at: ", down)
+        print("Found row to crop at: ", up)
         ### Draw a line where we want to crop
-        cv2.line(img_bin, (0,down), (img_bin.shape[1], down), (255), line_thickness)
+        cv2.line(img_bin, (0,up), (img_bin.shape[1], up), (255), line_thickness)
         break 
 
-img_cropped = img[up:down, :]
-thresh = 80
-img_bin2 = cv2.threshold(img_cropped, thresh, 255, cv2.THRESH_BINARY)[1]
+img_bin_cropped = img_bin[up:down, : ]
+show_image(img_bin_cropped, 'Cropped Binary Mask')
 
-intensity_threshold2 = 230
-bottom = img_bin2.shape[1]//2
+# blur the image to reduce noise before thresholding
+img_bin_cropped = cv2.GaussianBlur(img_bin_cropped, (5,5), 0)
 
-for i in range(0,img_bin2.shape[1],10):
-    row_mean = img_bin2[0][i].mean()
-    if row_mean < intensity_threshold2:
-        # Add 100 pixels of padding so we don't cut the costophrenic angles off
-        bottom = i
-        print("Found column to crop at: ", bottom)
-        ### Draw a line where we want to crop
-        cv2.line(img_bin2, (bottom, 0), (bottom, img_bin.shape[0]), (255), thickness=line_thickness)
-        break
-    print(row_mean)
-print(img_bin2.shape)
-    
-cv2.namedWindow('Cropped Image', cv2.WINDOW_NORMAL)
-cv2.resizeWindow('Cropped Image', img_bin2.shape[1]//2, img_cropped.shape[0]//2)
-cv2.imshow('Cropped Image', img_bin2)
+mean_thresh = cv2.adaptiveThreshold(img_bin_cropped, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, img_bin_cropped.shape[1]//100, 0)
+show_image(mean_thresh, 'Mean Adaptive Thresholding')
 
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# find the colume that max intenity compare with its left and right side
+mean_cols = np.mean(mean_thresh, axis=0)
+plt.plot(mean_cols)
+plt.title('Mean of Columns Intensity')
+plt.xlabel('Column Index')
+plt.ylabel('Mean of Intensity')
+plt.show()
+
+lowest_peaks = find_peaks(-mean_cols, distance=100, prominence=5)
+print(lowest_peaks)
+
+# cv2.line(img_bin_cropped, (200,0), (200, img_bin_cropped.shape[0]), (255), line_thickness)
+# cv2.line(img_bin_cropped, (771,0), (771, img_bin_cropped.shape[0]), (255), line_thickness)  
+# show_image(img_bin_cropped, 'Max Column Line')
