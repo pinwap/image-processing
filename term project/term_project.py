@@ -68,7 +68,7 @@ img2 = cv2.imread('data/testdata2.jpg', cv2.IMREAD_GRAYSCALE)
 img3 = cv2.imread('data/testdata3.jpg', cv2.IMREAD_GRAYSCALE)
 img4 = cv2.imread('data/testdata4.jpg', cv2.IMREAD_GRAYSCALE)
 
-img = img4 
+img = img
 
 # apply CLAHE to enhance the contrast of the image
 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -137,8 +137,9 @@ for lbl, area, (cx, cy) in zip(labels_ids, areas, centroids[1:]):
 
 lung_mask_most_left = stats[best_label][cv2.CC_STAT_LEFT]
 lung_mask_most_right = stats[best_label][cv2.CC_STAT_LEFT] + stats[best_label][cv2.CC_STAT_WIDTH]
-print("Lung mask most right: ", lung_mask_most_right)
-print("Lung mask most left: ", lung_mask_most_left)
+# print("Lung mask most right: ", lung_mask_most_right)
+# print("Lung mask most left: ", lung_mask_most_left)
+
 # lung mask center cx cy of best_label
 cx_lung, cy_lung = centroids[best_label + 1]
 
@@ -149,14 +150,16 @@ lung_mask_inv = cv2.bitwise_not(lung_mask)
 show_image(lung_mask_inv, 'Final Lung Mask')
 
 ## 1.3 Crop left-right
-root_lung = int((cx_lung + cy_lung) // 2)
-print("Lung center cx, cy: ", cx_lung, cy_lung)
-print (root_lung)
-# print ("Root lung for left-right cropping: ", root_lung)
-left, img_bin_line_left = line_lung_area(lung_mask_inv, side='left', intensity_threshold=220, root=root_lung, line_thickness=5)
-# img_bin_line_left_crop = lung_mask_inv[:, left:]
-right, img_bin_line_right = line_lung_area(img_bin_line_left, side='right', intensity_threshold=220, root=left, line_thickness=5)
+# root_lung = lung_mask_most_left
+# # print("Lung center cx, cy: ", cx_lung, cy_lung)
+# # print (root_lung)
+# # print ("Root lung for left-right cropping: ", root_lung)
+# left, img_bin_line_left = line_lung_area(lung_mask_inv, side='left', intensity_threshold=220, root=root_lung, line_thickness=5)
+# # img_bin_line_left_crop = lung_mask_inv[:, left:]
+# right, img_bin_line_right = line_lung_area(img_bin_line_left, side='right', intensity_threshold=220, root=left, line_thickness=5)
 
-show_image(img_bin_line_right, 'Final Crop Lines')
-# final_crop = enh_cropped[:, left:right]
-# show_image(final_crop, 'Final Cropped Image')
+# # show_image(img_bin_line_right, 'Final Crop Lines')
+if lung_mask_most_left -50 > 0:
+    lung_mask_most_left -= 50
+final_crop = enh_cropped[:, lung_mask_most_left:lung_mask_most_right]
+show_image(final_crop, 'Final Cropped Image')
