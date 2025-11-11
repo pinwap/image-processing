@@ -68,7 +68,7 @@ img2 = cv2.imread('data/testdata2.jpg', cv2.IMREAD_GRAYSCALE)
 img3 = cv2.imread('data/testdata3.jpg', cv2.IMREAD_GRAYSCALE)
 img4 = cv2.imread('data/testdata4.jpg', cv2.IMREAD_GRAYSCALE)
 
-img = img
+img = img4 
 
 # apply CLAHE to enhance the contrast of the image
 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -90,6 +90,10 @@ show_image(enh_cropped, 'Cropped Enhanced Image')
 img_bin2 = OTSU_threshold(enh_cropped)
 img_bin2 = cv2.GaussianBlur(img_bin2, (5, 5), 0)
 show_image(img_bin2, 'Re-Thresholded Cropped Image')
+# max filtering to remove small noise
+kernel = np.ones((3,3),np.uint8)
+img_bin2 = cv2.dilate(img_bin2, kernel, iterations=1)
+show_image(img_bin2, 'Dilated Image')
 
 ## 1.2 Isolate lung area
 im_flood = img_bin2
@@ -98,13 +102,20 @@ mask = np.zeros((h+2, w+2), np.uint8)
 
 # flood fill จากมุมภาพ ซึ่งเป็นพื้นหลังแน่นอน
 cv2.floodFill(im_flood, mask, seedPoint=(w//2, h-1), newVal=255)
-# show_image(im_flood, 'Floodfilled Image')
+cv2.floodFill(im_flood, mask, seedPoint=(w//2, 0), newVal=255)
+# max filtering to remove small noise
+kernel = np.ones((5,5),np.uint8)
+im_flood = cv2.dilate(im_flood, kernel, iterations=1)
+show_image(im_flood, 'Floodfilled Image')
 
 holes = cv2.bitwise_not(im_flood)
+# kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+# holes = cv2.morphologyEx(holes, cv2.MORPH_CLOSE, kernel, iterations=1)
+show_image(holes, 'Holes Image')
+
 num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats((holes > 0).astype('uint8')*255, connectivity=8)
-# show_image(holes, 'Holes Image')
-print("Number of connected components (including background): ", num_labels)
-print("Stats: ", stats)
+# print("Number of connected components (including background): ", num_labels)
+# print("Stats: ", stats)
 
 areas = stats[1:, cv2.CC_STAT_AREA]             # ข้าม label 0
 labels_ids = np.arange(1, num_labels)
@@ -125,6 +136,8 @@ for lbl, area, (cx, cy) in zip(labels_ids, areas, centroids[1:]):
         best_label = lbl
 
 lung_mask_most_left = stats[best_label][cv2.CC_STAT_LEFT]
+lung_mask_most_right = stats[best_label][cv2.CC_STAT_LEFT] + stats[best_label][cv2.CC_STAT_WIDTH]
+print("Lung mask most right: ", lung_mask_most_right)
 print("Lung mask most left: ", lung_mask_most_left)
 # lung mask center cx cy of best_label
 cx_lung, cy_lung = centroids[best_label + 1]
@@ -137,11 +150,13 @@ show_image(lung_mask_inv, 'Final Lung Mask')
 
 ## 1.3 Crop left-right
 root_lung = int((cx_lung + cy_lung) // 2)
+print("Lung center cx, cy: ", cx_lung, cy_lung)
+print (root_lung)
 # print ("Root lung for left-right cropping: ", root_lung)
 left, img_bin_line_left = line_lung_area(lung_mask_inv, side='left', intensity_threshold=220, root=root_lung, line_thickness=5)
 # img_bin_line_left_crop = lung_mask_inv[:, left:]
-right, img_bin_line_right = line_lung_area(lung_mask_inv, side='right', intensity_threshold=220, root=root_lung, line_thickness=5)
+right, img_bin_line_right = line_lung_area(img_bin_line_left, side='right', intensity_threshold=220, root=left, line_thickness=5)
 
 show_image(img_bin_line_right, 'Final Crop Lines')
-final_crop = enh_cropped[:, left:right]
-show_image(final_crop, 'Final Cropped Image')
+# final_crop = enh_cropped[:, left:right]
+# show_image(final_crop, 'Final Cropped Image')
