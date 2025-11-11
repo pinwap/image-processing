@@ -30,30 +30,7 @@ def line_lung_area(image, root, side='top', intensity_threshold=50, line_thickne
                 ### Draw a line where we want to crop
                 cv2.line(image, (0,top), (image.shape[1], top), (255), line_thickness)
                 break
-        return top, image
-    
-    elif side == 'left':
-        left = image.shape[1]//2
-        for i in range(root,0,-5):
-            column_mean = image[:, i].mean()
-            if column_mean > intensity_threshold:
-                left = i
-                print("Found column to crop at: ", left)
-                ### Draw a line where we want to crop
-                cv2.line(image, (left, 0), (left, image.shape[0]), (0), line_thickness)
-                break
-        return left, image
-    else: # right
-        right = image.shape[1]//2
-        for i in range(root, image.shape[1], +5):
-            column_mean = image[:, i].mean()
-            if column_mean > intensity_threshold:
-                right = i
-                print("Found column to crop at: ", right)
-                ### Draw a line where we want to crop
-                cv2.line(image, (right, 0), (right, image.shape[0]), (0), line_thickness)
-                break
-        return right, image       
+        return top, image    
 
 def OTSU_threshold(image):
     inv = image.copy()
@@ -109,8 +86,6 @@ im_flood = cv2.dilate(im_flood, kernel, iterations=1)
 show_image(im_flood, 'Floodfilled Image')
 
 holes = cv2.bitwise_not(im_flood)
-# kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-# holes = cv2.morphologyEx(holes, cv2.MORPH_CLOSE, kernel, iterations=1)
 show_image(holes, 'Holes Image')
 
 num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats((holes > 0).astype('uint8')*255, connectivity=8)
@@ -140,9 +115,6 @@ lung_mask_most_right = stats[best_label][cv2.CC_STAT_LEFT] + stats[best_label][c
 # print("Lung mask most right: ", lung_mask_most_right)
 # print("Lung mask most left: ", lung_mask_most_left)
 
-# lung mask center cx cy of best_label
-cx_lung, cy_lung = centroids[best_label + 1]
-
 lung_mask = np.zeros_like(img_bin2)
 lung_mask[labels == best_label] = 255 
 # show_image(lung_mask, 'Isolated Lung Mask')
@@ -150,15 +122,6 @@ lung_mask_inv = cv2.bitwise_not(lung_mask)
 show_image(lung_mask_inv, 'Final Lung Mask')
 
 ## 1.3 Crop left-right
-# root_lung = lung_mask_most_left
-# # print("Lung center cx, cy: ", cx_lung, cy_lung)
-# # print (root_lung)
-# # print ("Root lung for left-right cropping: ", root_lung)
-# left, img_bin_line_left = line_lung_area(lung_mask_inv, side='left', intensity_threshold=220, root=root_lung, line_thickness=5)
-# # img_bin_line_left_crop = lung_mask_inv[:, left:]
-# right, img_bin_line_right = line_lung_area(img_bin_line_left, side='right', intensity_threshold=220, root=left, line_thickness=5)
-
-# # show_image(img_bin_line_right, 'Final Crop Lines')
 if lung_mask_most_left -50 > 0:
     lung_mask_most_left -= 50
 final_crop = enh_cropped[:, lung_mask_most_left:lung_mask_most_right]
