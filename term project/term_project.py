@@ -1,5 +1,4 @@
 import cv2, numpy as np, matplotlib.pyplot as plt
-from scipy.signal import find_peaks
 
 def show_image(image, title='Image'):
     cv2.namedWindow(title, cv2.WINDOW_NORMAL)
@@ -7,12 +6,11 @@ def show_image(image, title='Image'):
     cv2.imshow(title, image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    
-def line_lung_area(image, side='top', intensity_threshold=50, line_thickness=5):
-    
+
+def line_lung_area(image, root, side='top', intensity_threshold=50, line_thickness=5):
     if side == 'bottom':
         bottom = 0
-        for i in range(image.shape[0]//2,image.shape[0],+5):
+        for i in range(root,image.shape[0],+5):
             row_mean = image[i].mean()
             if row_mean < intensity_threshold:
                 bottom = i
@@ -24,7 +22,7 @@ def line_lung_area(image, side='top', intensity_threshold=50, line_thickness=5):
 
     elif side == 'top':
         top = 0
-        for i in range(image.shape[0]//2,0,-5):
+        for i in range(root,0,-5):
             row_mean = image[i].mean()
             if row_mean < intensity_threshold:
                 top = i
@@ -36,9 +34,9 @@ def line_lung_area(image, side='top', intensity_threshold=50, line_thickness=5):
     
     elif side == 'left':
         left = image.shape[1]//2
-        for i in range(0,image.shape[1]-1,+5):
+        for i in range(root,0,-5):
             column_mean = image[:, i].mean()
-            if column_mean < intensity_threshold:
+            if column_mean > intensity_threshold:
                 left = i
                 print("Found column to crop at: ", left)
                 ### Draw a line where we want to crop
@@ -47,7 +45,7 @@ def line_lung_area(image, side='top', intensity_threshold=50, line_thickness=5):
         return left, image
     else: # right
         right = image.shape[1]//2
-        for i in range(0, image.shape[1]-1,+5):
+        for i in range(root, image.shape[1], +5):
             column_mean = image[:, i].mean()
             if column_mean > intensity_threshold:
                 right = i
@@ -70,7 +68,7 @@ img2 = cv2.imread('data/testdata2.jpg', cv2.IMREAD_GRAYSCALE)
 img3 = cv2.imread('data/testdata3.jpg', cv2.IMREAD_GRAYSCALE)
 img4 = cv2.imread('data/testdata4.jpg', cv2.IMREAD_GRAYSCALE)
 
-img = img4
+img = img
 
 # apply CLAHE to enhance the contrast of the image
 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -83,14 +81,15 @@ img_bin = OTSU_threshold(enh)
 # show_image(img_bin, 'Initial Lung Binary Mask')
 
 ## draw top and bottom crop lines
-bottom, img_bin_line_bottom = line_lung_area(img_bin, side='bottom', intensity_threshold=50, line_thickness=5)
-top, img_bin_line_top = line_lung_area(img_bin_line_bottom, side='top', intensity_threshold=50, line_thickness=5)
+bottom, img_bin_line_bottom = line_lung_area(img_bin, side='bottom', intensity_threshold=50, root=img_bin.shape[0]//2, line_thickness=5)
+top, img_bin_line_top = line_lung_area(img_bin_line_bottom, side='top', intensity_threshold=50, root=img_bin.shape[0]//2, line_thickness=5)
 
 enh_cropped = enh[top:bottom, : ]
-# show_image(enh_cropped, 'Cropped Enhanced Image')
+show_image(enh_cropped, 'Cropped Enhanced Image')
 
 img_bin2 = OTSU_threshold(enh_cropped)
-# show_image(img_bin2, 'Re-Thresholded Cropped Image')
+img_bin2 = cv2.GaussianBlur(img_bin2, (5, 5), 0)
+show_image(img_bin2, 'Re-Thresholded Cropped Image')
 
 ## 1.2 Isolate lung area
 im_flood = img_bin2
@@ -98,9 +97,14 @@ h, w = img_bin2.shape
 mask = np.zeros((h+2, w+2), np.uint8)
 
 # flood fill จากมุมภาพ ซึ่งเป็นพื้นหลังแน่นอน
-cv2.floodFill(im_flood, mask, seedPoint=(0, 0), newVal=255)
+cv2.floodFill(im_flood, mask, seedPoint=(w//2, h-1), newVal=255)
+# show_image(im_flood, 'Floodfilled Image')
+
 holes = cv2.bitwise_not(im_flood)
 num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats((holes > 0).astype('uint8')*255, connectivity=8)
+# show_image(holes, 'Holes Image')
+print("Number of connected components (including background): ", num_labels)
+print("Stats: ", stats)
 
 areas = stats[1:, cv2.CC_STAT_AREA]             # ข้าม label 0
 labels_ids = np.arange(1, num_labels)
@@ -120,16 +124,24 @@ for lbl, area, (cx, cy) in zip(labels_ids, areas, centroids[1:]):
         best_score = score
         best_label = lbl
 
+lung_mask_most_left = stats[best_label][cv2.CC_STAT_LEFT]
+print("Lung mask most left: ", lung_mask_most_left)
+# lung mask center cx cy of best_label
+cx_lung, cy_lung = centroids[best_label + 1]
+
 lung_mask = np.zeros_like(img_bin2)
 lung_mask[labels == best_label] = 255 
+# show_image(lung_mask, 'Isolated Lung Mask')
 lung_mask_inv = cv2.bitwise_not(lung_mask)
-# show_image(lung_mask_inv, 'Final Lung Mask')
+show_image(lung_mask_inv, 'Final Lung Mask')
 
 ## 1.3 Crop left-right
-left, img_bin_line_left = line_lung_area(lung_mask_inv, side='left', intensity_threshold=220, line_thickness=5)
-img_bin_line_left_crop = lung_mask_inv[:, left:]
-right, img_bin_line_right = line_lung_area(img_bin_line_left_crop, side='right', intensity_threshold=220, line_thickness=5)
+root_lung = int((cx_lung + cy_lung) // 2)
+# print ("Root lung for left-right cropping: ", root_lung)
+left, img_bin_line_left = line_lung_area(lung_mask_inv, side='left', intensity_threshold=220, root=root_lung, line_thickness=5)
+# img_bin_line_left_crop = lung_mask_inv[:, left:]
+right, img_bin_line_right = line_lung_area(lung_mask_inv, side='right', intensity_threshold=220, root=root_lung, line_thickness=5)
 
-show_image(lung_mask_inv, 'Right Crop Line')
-final_crop = enh_cropped[:, left-100:right+300]
+show_image(img_bin_line_right, 'Final Crop Lines')
+final_crop = enh_cropped[:, left:right]
 show_image(final_crop, 'Final Cropped Image')
